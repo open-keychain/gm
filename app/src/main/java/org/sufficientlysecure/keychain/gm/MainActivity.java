@@ -41,6 +41,10 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(sSettingsIntent);
             }
         });
+
+        // TODO:
+        // - check if accessibility service is started: http://stackoverflow.com/questions/600207/how-to-check-if-a-service-is-running-on-android?rq=1
+        // - check if openkeychain is installed
     }
 
 }

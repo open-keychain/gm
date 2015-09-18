@@ -32,6 +32,10 @@ public class GmAccessibilityService extends AccessibilityService {
     private static final String WEB_VIEW_CLASS_NAME = "android.webkit.WebView";
     private static final String VIEW_CLASS_NAME = "android.view.View";
 
+    private static final String BEGIN_PGP_MESSAGE = "-----BEGIN PGP MESSAGE-----";
+    private static final String END_PGP_MESSAGE = "-----END PGP MESSAGE-----";
+    private static final int CHECKSUM_LENGTH = 5;
+
     /**
      * {@inheritDoc}
      */
@@ -63,26 +67,53 @@ public class GmAccessibilityService extends AccessibilityService {
         if (source == null) {
             return;
         }
-        Log.i(LOG_TAG, "ACC::onAccessibilityEvent: nodeInfo=" + source);
 
         ArrayList<AccessibilityNodeInfo> pgpNodes = new ArrayList<>();
         findPgpNodeInfo(source, pgpNodes);
         for (AccessibilityNodeInfo node : pgpNodes) {
+            Log.d(LOG_TAG, "node=" + node);
 
-            // TODO: missing line breaks!!!
-            // thus we need to inject javascript into webview and do it like
-            // https://code.google.com/p/eyes-free/source/browse/trunk/accessibilityServices/talkback/src/com/google/android/marvin/talkback/ProcessorWebContent.java?r=829
-            // ??????
-            CharSequence content = node.getContentDescription();
-            for (String line : ((String) content).split("/")) {
-                Log.d(LOG_TAG, line);
+            String content = node.getContentDescription().toString();
+
+            // NOTE: Unfortunately, line breaks are missing from content description, thus
+            // we are reformatting now:
+
+            // TODO: get charset from header?
+
+            // find "hQ", start of pgp message (0x80 byte) and remove everything before
+            content = content.replaceFirst(".*hQ", "hQ");
+
+            StringBuilder builder = new StringBuilder(content);
+
+            // re-add -----BEGIN PGP MESSAGE-----
+            String header = BEGIN_PGP_MESSAGE + "\n\n";
+            builder.insert(0, header);
+
+            int indexOfEnd = builder.lastIndexOf(END_PGP_MESSAGE);
+            // TODO: check if END pgp message is really inside string! if not -> gmail has cut it!
+            builder.insert(indexOfEnd, "\n");
+            int i = indexOfEnd - CHECKSUM_LENGTH;
+            builder.insert(i, "\n");
+
+            // split into 65 character chunks
+            int currentIndex = header.length() + 64;
+            while (currentIndex < indexOfEnd) {
+                builder.insert(currentIndex, "\n");
+                currentIndex += 65;
+
+                // stop where checksum starts
+                indexOfEnd = builder.lastIndexOf(END_PGP_MESSAGE) - CHECKSUM_LENGTH - 2;
+            }
+
+            content = builder.toString();
+
+            if (BuildConfig.DEBUG) {
+                // split for long messages
+                for (String line : content.split("\n")) {
+                    Log.d(LOG_TAG, line);
+                }
             }
         }
-
-
-        // TODO
-        // - javascript injection for newlines?
-        // -
 
 
 //        AccessibilityNodeInfo root = getRootInActiveWindow();
@@ -131,10 +162,8 @@ public class GmAccessibilityService extends AccessibilityService {
              */
             if (WEB_VIEW_CLASS_NAME.equals(parent.getClassName())
                     && VIEW_CLASS_NAME.equals(currentChild.getClassName())
-                    && !TextUtils.isEmpty(currentChild.getContentDescription())) {
-
-                Log.d(LOG_TAG, "MATCHED");
-                // TODO: match on -----BEGIN PGP MESSAGE-----
+                    && !TextUtils.isEmpty(currentChild.getContentDescription())
+                    && currentChild.getContentDescription().toString().startsWith(BEGIN_PGP_MESSAGE)) {
 
                 pgpNodes.add(currentChild);
             } else {
