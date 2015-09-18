@@ -18,9 +18,11 @@
 package org.sufficientlysecure.keychain.gm;
 
 import android.accessibilityservice.AccessibilityService;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityRecord;
 
 import java.util.ArrayList;
 
@@ -82,8 +84,9 @@ public class GmAccessibilityService extends AccessibilityService {
 //            AccessibilityRecord record = event.getRecord(i);
 //            CharSequence contentDescription = record.getContentDescription();
 //            if (!TextUtils.isEmpty(contentDescription)) {
-//                utterance.append(SEPARATOR);
-//                utterance.append(contentDescription);
+//                for (String line : ((String) contentDescription).split("\n")) {
+//                    Log.d(LOG_TAG, line);
+//                }
 //            }
 //        }
 
@@ -124,7 +127,6 @@ public class GmAccessibilityService extends AccessibilityService {
 
         for (int i = 0; i < parent.getChildCount(); i++) {
             AccessibilityNodeInfo currentChild = parent.getChild(i);
-            Log.d(LOG_TAG, "currentChild.getClassName() " + currentChild.getClassName());
 
             /*
              WebView
@@ -135,28 +137,31 @@ public class GmAccessibilityService extends AccessibilityService {
              */
             if (WEB_VIEW_CLASS_NAME.equals(parent.getClassName())
                     && VIEW_CLASS_NAME.equals(currentChild.getClassName())
-                    && currentChild.getContentDescription() != null) {
+                    && !TextUtils.isEmpty(currentChild.getContentDescription())) {
 
                 Log.d(LOG_TAG, "MATCHED");
                 // -----BEGIN PGP MESSAGE-----
 
 
+                // TODO: missing line breaks!!!
+                // thus we need to inject javascript into webview and do it like
+                // https://code.google.com/p/eyes-free/source/browse/trunk/accessibilityServices/talkback/src/com/google/android/marvin/talkback/ProcessorWebContent.java?r=829
+                // ??????
                 CharSequence content = currentChild.getContentDescription();
-                for (String line : ((String) content).split("\n")) {
+                for (String line : ((String) content).split("/")) {
                     Log.d(LOG_TAG, line);
                 }
 
                 pgpNodes.add(currentChild);
 
             } else {
-                // recursive
+                // recursive traversal
                 AccessibilityNodeInfo nd = getListItemNodeInfo(currentChild, pgpNodes);
                 if (nd == null) {
                     continue;
                 }
             }
 
-            // NOTE: Recycle the infos.
             currentChild.recycle();
         }
 
