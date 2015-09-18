@@ -18,6 +18,7 @@
 package org.sufficientlysecure.keychain.gm;
 
 import android.accessibilityservice.AccessibilityService;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
@@ -27,13 +28,16 @@ import android.support.annotation.Nullable;
 import android.support.v4.view.ViewCompat;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.ContextThemeWrapper;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.RelativeLayout;
 
 import org.sufficientlysecure.keychain.intents.OpenKeychainIntents;
@@ -53,7 +57,7 @@ public class GmAccessibilityService extends AccessibilityService {
 
     private WindowManager mWindowManager;
     private FrameLayout mOverlay;
-    private Button mOverlayButton;
+//    private Button mOverlayButton;
 
     /**
      * {@inheritDoc}
@@ -92,10 +96,10 @@ public class GmAccessibilityService extends AccessibilityService {
             mWindowManager.removeView(mOverlay);
             mOverlay = null;
         }
-        if (mOverlayButton != null && ViewCompat.isAttachedToWindow(mOverlayButton)) {
-            mWindowManager.removeView(mOverlayButton);
-            mOverlayButton = null;
-        }
+//        if (mOverlayButton != null && ViewCompat.isAttachedToWindow(mOverlayButton)) {
+//            mWindowManager.removeView(mOverlayButton);
+//            mOverlayButton = null;
+//        }
 
         ArrayList<AccessibilityNodeInfo> pgpNodes = new ArrayList<>();
         findPgpNodeInfo(source, pgpNodes);
@@ -222,41 +226,77 @@ public class GmAccessibilityService extends AccessibilityService {
 
         // must be encapsulated into FrameLayout for animation
         FrameLayout mAnimatedChild = new FrameLayout(this);
-        mAnimatedChild.setBackgroundColor(Color.parseColor("#CCFFFFFF"));
+        LayoutInflater systemInflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        final Context contextThemeWrapper = new ContextThemeWrapper(this, R.style.FixedBottomSheetTheme);
+        LayoutInflater inflater = systemInflater.cloneInContext(contextThemeWrapper);
 
-        mOverlayButton = new Button(this);
-        mOverlayButton.setText(R.string.decrypt_with_openkeychain);
-        mOverlayButton.setOnClickListener(onClickListener);
+        View child = inflater.inflate(R.layout.fixed_bottom_sheet, null);
+        mAnimatedChild.addView(child);
+
+        Button b = (Button) child.findViewById(R.id.fixed_bottom_sheet_button);
+        b.setText(R.string.decrypt_with_openkeychain);
+        b.setOnClickListener(onClickListener);
+
+        ImageButton close = (ImageButton) child.findViewById(R.id.fixed_bottom_sheet_close);
+        close.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mOverlay != null && ViewCompat.isAttachedToWindow(mOverlay)) {
+                    mWindowManager.removeView(mOverlay);
+                    mOverlay = null;
+                }
+            }
+        });
+
+//        mAnimatedChild.setBackgroundColor(Color.parseColor("#CCFFFFFF"));
+
+//        mOverlayButton = new Button(this);
+//        mOverlayButton.setText(R.string.decrypt_with_openkeychain);
+//        mOverlayButton.setOnClickListener(onClickListener);
 
         // NOTE: MUST be two separate overlays, one that is not touchable and the other one is!
 
         // FLAG_DIM_BEHIND ?
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                currRect.width(),
-                currRect.height(),
-                currRect.left,
-                currRect.top,
-                WindowManager.LayoutParams.TYPE_PHONE,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-                PixelFormat.TRANSLUCENT);
-        params.gravity = Gravity.TOP | Gravity.LEFT;
-        params.windowAnimations = R.style.OverlayAnimation;
-        mWindowManager.addView(mOverlay, params);
-        mOverlay.addView(mAnimatedChild);
+//        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+//                currRect.width(),
+//                currRect.height(),
+//                currRect.left,
+//                currRect.top,
+//                WindowManager.LayoutParams.TYPE_PHONE,
+//                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+//                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+//                        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+//                PixelFormat.TRANSLUCENT);
+//        params.gravity = Gravity.TOP | Gravity.LEFT;
+//        params.windowAnimations = R.style.OverlayAnimation;
+//        mWindowManager.addView(mOverlay, params);
+//        mOverlay.addView(mAnimatedChild);
 
-        WindowManager.LayoutParams params2 = new WindowManager.LayoutParams(
+//        WindowManager.LayoutParams params2 = new WindowManager.LayoutParams(
+//                WindowManager.LayoutParams.WRAP_CONTENT,
+//                WindowManager.LayoutParams.WRAP_CONTENT,
+//                currRect.left + (currRect.width() / 2),
+//                currRect.top + (currRect.height() / 2),
+//                WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
+//                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+//                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+//                PixelFormat.TRANSLUCENT);
+//        params2.gravity = Gravity.TOP | Gravity.LEFT;
+//        mWindowManager.addView(mOverlayButton, params2);
+
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                currRect.left + (currRect.width() / 2),
-                currRect.top + (currRect.height() / 2),
+                0,
+                0,
                 WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                         | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
                 PixelFormat.TRANSLUCENT);
-        params2.gravity = Gravity.TOP | Gravity.LEFT;
-        mWindowManager.addView(mOverlayButton, params2);
+        params.gravity = Gravity.BOTTOM | Gravity.LEFT;
+        params.windowAnimations = R.style.OverlayAnimation;
+        mWindowManager.addView(mOverlay, params);
+        mOverlay.addView(mAnimatedChild);
     }
 
     private void findPgpNodeInfo(AccessibilityNodeInfo parent,
@@ -305,9 +345,9 @@ public class GmAccessibilityService extends AccessibilityService {
             mWindowManager.removeView(mOverlay);
             mOverlay = null;
         }
-        if (mOverlayButton != null && ViewCompat.isAttachedToWindow(mOverlayButton)) {
-            mWindowManager.removeView(mOverlayButton);
-            mOverlayButton = null;
-        }
+//        if (mOverlayButton != null && ViewCompat.isAttachedToWindow(mOverlayButton)) {
+//            mWindowManager.removeView(mOverlayButton);
+//            mOverlayButton = null;
+//        }
     }
 }

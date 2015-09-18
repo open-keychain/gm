@@ -5,6 +5,10 @@
         <!-- Customize your theme here. -->
     </style>
 
+    <style name="FixedBottomSheetTheme" parent="Theme.AppCompat.Light">
+        <!-- Customize your theme here. -->
+    </style>
+
     <style name="OverlayAnimation">
         <item name="android:windowEnterAnimation">@anim/fade_in</item>
         <item name="android:windowExitAnimation">@anim/fade_out</item>

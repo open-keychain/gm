@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:background="@android:color/white"
+    android:orientation="vertical">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="3dp"
+        android:id="@+id/shadow"
+        android:background="@drawable/background_shadow" />
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
+
+        <Button
+            android:paddingLeft="16dp"
+            android:paddingBottom="8dp"
+            android:paddingTop="8dp"
+            android:id="@+id/fixed_bottom_sheet_button"
+            style="?android:attr/borderlessButtonStyle"
+            android:textAllCaps="false"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawableLeft="@drawable/openkeychain_launcher"
+            android:drawablePadding="16dp"
+            android:drawableStart="@drawable/openkeychain_launcher"
+            android:gravity="start|center_vertical"
+            tools:text="Do something"
+            android:textSize="16sp"
+            android:textColor="@android:color/black"
+            android:layout_toLeftOf="@+id/fixed_bottom_sheet_close"
+            android:layout_toStartOf="@+id/fixed_bottom_sheet_close"
+            android:textStyle="normal" />
+
+        <ImageButton
+            android:id="@+id/fixed_bottom_sheet_close"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_gravity="end"
+            android:src="@drawable/ic_close_grey600_24dp"
+            android:layout_centerInParent="@+id/fixed_bottom_sheet_button"
+            android:layout_alignBottom="@+id/fixed_bottom_sheet_button"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentEnd="true" />
+    </RelativeLayout>
+
+</LinearLayout>
