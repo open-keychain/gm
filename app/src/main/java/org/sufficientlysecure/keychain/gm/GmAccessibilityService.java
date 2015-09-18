@@ -22,7 +22,6 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.view.accessibility.AccessibilityRecord;
 
 import java.util.ArrayList;
 
@@ -67,28 +66,23 @@ public class GmAccessibilityService extends AccessibilityService {
         Log.i(LOG_TAG, "ACC::onAccessibilityEvent: nodeInfo=" + source);
 
         ArrayList<AccessibilityNodeInfo> pgpNodes = new ArrayList<>();
-        AccessibilityNodeInfo rowNode = getListItemNodeInfo(source, pgpNodes);
-        if (rowNode == null) {
-            return;
+        findPgpNodeInfo(source, pgpNodes);
+        for (AccessibilityNodeInfo node : pgpNodes) {
+
+            // TODO: missing line breaks!!!
+            // thus we need to inject javascript into webview and do it like
+            // https://code.google.com/p/eyes-free/source/browse/trunk/accessibilityServices/talkback/src/com/google/android/marvin/talkback/ProcessorWebContent.java?r=829
+            // ??????
+            CharSequence content = node.getContentDescription();
+            for (String line : ((String) content).split("/")) {
+                Log.d(LOG_TAG, line);
+            }
         }
 
 
         // TODO
-        // - try out if this webview has AccessibilityRecord
-        // - check if
-
-//        // The custom ListView added extra context to the event by adding an
-//        // AccessibilityRecord to it. Extract that from the event and read it.
-//        final int records = event.getRecordCount();
-//        for (int i = 0; i < records; i++) {
-//            AccessibilityRecord record = event.getRecord(i);
-//            CharSequence contentDescription = record.getContentDescription();
-//            if (!TextUtils.isEmpty(contentDescription)) {
-//                for (String line : ((String) contentDescription).split("\n")) {
-//                    Log.d(LOG_TAG, line);
-//                }
-//            }
-//        }
+        // - javascript injection for newlines?
+        // -
 
 
 //        AccessibilityNodeInfo root = getRootInActiveWindow();
@@ -122,8 +116,8 @@ public class GmAccessibilityService extends AccessibilityService {
 //        }
     }
 
-    private AccessibilityNodeInfo getListItemNodeInfo(AccessibilityNodeInfo parent,
-                                                      ArrayList<AccessibilityNodeInfo> pgpNodes) {
+    private void findPgpNodeInfo(AccessibilityNodeInfo parent,
+                                 ArrayList<AccessibilityNodeInfo> pgpNodes) {
 
         for (int i = 0; i < parent.getChildCount(); i++) {
             AccessibilityNodeInfo currentChild = parent.getChild(i);
@@ -140,32 +134,16 @@ public class GmAccessibilityService extends AccessibilityService {
                     && !TextUtils.isEmpty(currentChild.getContentDescription())) {
 
                 Log.d(LOG_TAG, "MATCHED");
-                // -----BEGIN PGP MESSAGE-----
-
-
-                // TODO: missing line breaks!!!
-                // thus we need to inject javascript into webview and do it like
-                // https://code.google.com/p/eyes-free/source/browse/trunk/accessibilityServices/talkback/src/com/google/android/marvin/talkback/ProcessorWebContent.java?r=829
-                // ??????
-                CharSequence content = currentChild.getContentDescription();
-                for (String line : ((String) content).split("/")) {
-                    Log.d(LOG_TAG, line);
-                }
+                // TODO: match on -----BEGIN PGP MESSAGE-----
 
                 pgpNodes.add(currentChild);
-
             } else {
                 // recursive traversal
-                AccessibilityNodeInfo nd = getListItemNodeInfo(currentChild, pgpNodes);
-                if (nd == null) {
-                    continue;
-                }
+                findPgpNodeInfo(currentChild, pgpNodes);
+
+                currentChild.recycle();
             }
-
-            currentChild.recycle();
         }
-
-        return null;
     }
 
     /**
