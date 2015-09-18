@@ -109,7 +109,7 @@ public class GmAccessibilityService extends AccessibilityService {
 
     private void decryptWithOpenKeychain(AccessibilityNodeInfo node) {
         closeOverlay();
-        
+
         try {
             Uri dateUri = readToTempFile(fixContentDescription(node));
 
