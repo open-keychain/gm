@@ -201,10 +201,7 @@ public class GmAccessibilityService extends AccessibilityService {
         close.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mOverlay != null && ViewCompat.isAttachedToWindow(mOverlay)) {
-                    mWindowManager.removeView(mOverlay);
-                    mOverlay = null;
-                }
+                closeOverlay();
             }
         });
 

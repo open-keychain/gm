@@ -164,9 +164,6 @@ public class TemporaryStorageProvider extends ContentProvider {
         File file;
         try {
             file = getFile(uri);
-            if (file.exists()) {
-                Log.e(Constants.TAG, "already exists");
-            }
         } catch (FileNotFoundException e) {
             Log.e(Constants.TAG, "file not found!");
             return null;
