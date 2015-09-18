@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">gm</string>
+    <string name="app_name">OpenPGP for Gmail</string>
 
     <string name="accessibility_service_description">Hello world!</string>
     <string name="action_settings">Settings</string>
