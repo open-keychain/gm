@@ -33,6 +33,7 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
 
 import org.sufficientlysecure.keychain.intents.OpenKeychainIntents;
@@ -51,7 +52,7 @@ public class GmAccessibilityService extends AccessibilityService {
     private static final int CHECKSUM_LENGTH = 5;
 
     private WindowManager mWindowManager;
-    private RelativeLayout mOverlay;
+    private FrameLayout mOverlay;
     private Button mOverlayButton;
 
     /**
@@ -217,9 +218,11 @@ public class GmAccessibilityService extends AccessibilityService {
 
     private void drawOverlay(Rect currRect, View.OnClickListener onClickListener) {
 
+        mOverlay = new FrameLayout(this);
 
-        mOverlay = new RelativeLayout(this);
-        mOverlay.setBackgroundColor(Color.parseColor("#CCFFFFFF"));
+        // must be encapsulated into FrameLayout for animation
+        FrameLayout mAnimatedChild = new FrameLayout(this);
+        mAnimatedChild.setBackgroundColor(Color.parseColor("#CCFFFFFF"));
 
         mOverlayButton = new Button(this);
         mOverlayButton.setText(R.string.decrypt_with_openkeychain);
@@ -239,7 +242,9 @@ public class GmAccessibilityService extends AccessibilityService {
                         | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                 PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.TOP | Gravity.LEFT;
+        params.windowAnimations = R.style.OverlayAnimation;
         mWindowManager.addView(mOverlay, params);
+        mOverlay.addView(mAnimatedChild);
 
         WindowManager.LayoutParams params2 = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
