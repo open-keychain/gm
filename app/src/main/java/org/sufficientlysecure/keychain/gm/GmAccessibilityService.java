@@ -25,9 +25,12 @@ import android.support.v4.view.ViewCompat;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.View;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.Button;
 import android.widget.RelativeLayout;
 
 import java.util.ArrayList;
@@ -45,6 +48,7 @@ public class GmAccessibilityService extends AccessibilityService {
 
     private WindowManager mWindowManager;
     private RelativeLayout mOverlay;
+    private Button mOverlayButton;
 
     /**
      * {@inheritDoc}
@@ -82,6 +86,10 @@ public class GmAccessibilityService extends AccessibilityService {
         if (mOverlay != null && ViewCompat.isAttachedToWindow(mOverlay)) {
             mWindowManager.removeView(mOverlay);
             mOverlay = null;
+        }
+        if (mOverlayButton != null && ViewCompat.isAttachedToWindow(mOverlayButton)) {
+            mWindowManager.removeView(mOverlayButton);
+            mOverlayButton = null;
         }
 
         ArrayList<AccessibilityNodeInfo> pgpNodes = new ArrayList<>();
@@ -174,20 +182,37 @@ public class GmAccessibilityService extends AccessibilityService {
 
         mOverlay = new RelativeLayout(this);
         mOverlay.setBackgroundColor(Color.parseColor("#CCFFFFFF"));
-        mOverlay.setFocusable(false);
 
+        mOverlayButton = new Button(this);
+        mOverlayButton.setText(R.string.decrypt_with_openkeychain);
+
+        // NOTE: MUST be two separate overlays, one that is not touchable and the other one is!
+
+        // FLAG_DIM_BEHIND ?
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 currRect.width(),
                 currRect.height(),
                 currRect.left,
                 currRect.top,
                 WindowManager.LayoutParams.TYPE_PHONE,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                 PixelFormat.TRANSLUCENT);
-
         params.gravity = Gravity.TOP | Gravity.LEFT;
-
         mWindowManager.addView(mOverlay, params);
+
+        WindowManager.LayoutParams params2 = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                currRect.left + (currRect.width() / 2),
+                currRect.top + (currRect.height() / 2),
+                WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                PixelFormat.TRANSLUCENT);
+        params2.gravity = Gravity.TOP | Gravity.LEFT;
+        mWindowManager.addView(mOverlayButton, params2);
     }
 
     private void findPgpNodeInfo(AccessibilityNodeInfo parent,
@@ -232,5 +257,13 @@ public class GmAccessibilityService extends AccessibilityService {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        if (mOverlay != null && ViewCompat.isAttachedToWindow(mOverlay)) {
+            mWindowManager.removeView(mOverlay);
+            mOverlay = null;
+        }
+        if (mOverlayButton != null && ViewCompat.isAttachedToWindow(mOverlayButton)) {
+            mWindowManager.removeView(mOverlayButton);
+            mOverlayButton = null;
+        }
     }
 }
