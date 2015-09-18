@@ -18,14 +18,16 @@
 package org.sufficientlysecure.keychain.gm;
 
 import android.accessibilityservice.AccessibilityService;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
+import android.net.Uri;
+import android.support.annotation.Nullable;
 import android.support.v4.view.ViewCompat;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Gravity;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
@@ -33,11 +35,13 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.Button;
 import android.widget.RelativeLayout;
 
+import org.sufficientlysecure.keychain.intents.OpenKeychainIntents;
+
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 
 public class GmAccessibilityService extends AccessibilityService {
-
-    private static final String LOG_TAG = "Keychain_gm";
 
     private static final String WEB_VIEW_CLASS_NAME = "android.webkit.WebView";
     private static final String VIEW_CLASS_NAME = "android.view.View";
@@ -66,7 +70,7 @@ public class GmAccessibilityService extends AccessibilityService {
         if (!(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED == event.getEventType())) {
             return;
         }
-        Log.d(LOG_TAG, "TYPE_WINDOW_CONTENT_CHANGED");
+        Log.d(Constants.TAG, "TYPE_WINDOW_CONTENT_CHANGED");
 
         // This AccessibilityNodeInfo represents the view that fired the
         // AccessibilityEvent. The following code will use it to traverse the
@@ -94,57 +98,91 @@ public class GmAccessibilityService extends AccessibilityService {
 
         ArrayList<AccessibilityNodeInfo> pgpNodes = new ArrayList<>();
         findPgpNodeInfo(source, pgpNodes);
-        for (AccessibilityNodeInfo node : pgpNodes) {
-            Log.d(LOG_TAG, "node=" + node);
+        for (final AccessibilityNodeInfo node : pgpNodes) {
+            Log.d(Constants.TAG, "node=" + node);
 
-            String content = node.getContentDescription().toString();
-
-            // NOTE: Unfortunately, line breaks are missing from content description, thus
-            // we are reformatting now:
-
-            // TODO: get charset from header?
-
-            // find "hQ", start of pgp message (0x80 byte) and remove everything before
-            content = content.replaceFirst(".*hQ", "hQ");
-
-            StringBuilder builder = new StringBuilder(content);
-
-            // re-add -----BEGIN PGP MESSAGE-----
-            String header = BEGIN_PGP_MESSAGE + "\n\n";
-            builder.insert(0, header);
-
-            int indexOfEnd = builder.lastIndexOf(END_PGP_MESSAGE);
-            // TODO: check if END pgp message is really inside string! if not -> gmail has cut it!
-            builder.insert(indexOfEnd, "\n");
-            int i = indexOfEnd - CHECKSUM_LENGTH;
-            builder.insert(i, "\n");
-
-            // split into 65 character chunks
-            int currentIndex = header.length() + 64;
-            while (currentIndex < indexOfEnd) {
-                builder.insert(currentIndex, "\n");
-                currentIndex += 65;
-
-                // stop where checksum starts
-                indexOfEnd = builder.lastIndexOf(END_PGP_MESSAGE) - CHECKSUM_LENGTH - 2;
-            }
-
-            content = builder.toString();
-
-            if (BuildConfig.DEBUG) {
-                // split for long messages
-                for (String line : content.split("\n")) {
-                    Log.d(LOG_TAG, line);
-                }
-            }
-
-//            node.getBoundsInScreen();
             Rect currRect = new Rect();
             node.getBoundsInScreen(currRect);
-            drawOverlay(currRect);
+            drawOverlay(currRect, new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    decryptWithOpenKeychain(node);
+                }
+            });
+        }
+    }
 
+    private void decryptWithOpenKeychain(AccessibilityNodeInfo node) {
+        try {
+            Uri dateUri = readToTempFile(fixContentDescription(node));
+
+            Intent i = new Intent(OpenKeychainIntents.DECRYPT_DATA);
+            // TODO: DECRYPT_DATA broken?!
+            i.setData(dateUri);
+            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        } catch (IOException e) {
+            Log.e(Constants.TAG, "read to temp failed!", e);
+        }
+    }
+
+    @Nullable
+    public Uri readToTempFile(String text) throws IOException {
+        Uri tempFile = TemporaryStorageProvider.createFile(this);
+        OutputStream outStream = getContentResolver().openOutputStream(tempFile);
+        if (outStream == null) {
+            return null;
         }
 
+        outStream.write(text.getBytes());
+        outStream.close();
+        return tempFile;
+    }
+
+    private String fixContentDescription(AccessibilityNodeInfo node) {
+        String content = node.getContentDescription().toString();
+
+        // NOTE: Unfortunately, line breaks are missing from content description, thus
+        // we are reformatting now:
+
+        // TODO: get charset from header?
+
+        // find "hQ", start of pgp message (0x80 byte) and remove everything before
+        content = content.replaceFirst(".*hQ", "hQ");
+
+        StringBuilder builder = new StringBuilder(content);
+
+        // re-add -----BEGIN PGP MESSAGE-----
+        String header = BEGIN_PGP_MESSAGE + "\n\n";
+        builder.insert(0, header);
+
+        int indexOfEnd = builder.lastIndexOf(END_PGP_MESSAGE);
+        // TODO: check if END pgp message is really inside string! if not -> gmail has cut it!
+        builder.insert(indexOfEnd, "\n");
+        int i = indexOfEnd - CHECKSUM_LENGTH;
+        builder.insert(i, "\n");
+
+        // split into 65 character chunks
+        int currentIndex = header.length() + 64;
+        while (currentIndex < indexOfEnd) {
+            builder.insert(currentIndex, "\n");
+            currentIndex += 65;
+
+            // stop where checksum starts
+            indexOfEnd = builder.lastIndexOf(END_PGP_MESSAGE) - CHECKSUM_LENGTH - 2;
+        }
+
+        content = builder.toString();
+
+        if (Constants.DEBUG) {
+            // split for long messages
+            for (String line : content.split("\n")) {
+                Log.d(Constants.TAG, line);
+            }
+        }
+
+        return content;
+    }
 
 //        AccessibilityNodeInfo root = getRootInActiveWindow();
 //        ArrayDeque<AccessibilityNodeInfo> nodeQueue
@@ -175,9 +213,9 @@ public class GmAccessibilityService extends AccessibilityService {
 //                target = node;
 //            }
 //        }
-    }
 
-    private void drawOverlay(Rect currRect) {
+
+    private void drawOverlay(Rect currRect, View.OnClickListener onClickListener) {
 
 
         mOverlay = new RelativeLayout(this);
@@ -185,6 +223,7 @@ public class GmAccessibilityService extends AccessibilityService {
 
         mOverlayButton = new Button(this);
         mOverlayButton.setText(R.string.decrypt_with_openkeychain);
+        mOverlayButton.setOnClickListener(onClickListener);
 
         // NOTE: MUST be two separate overlays, one that is not touchable and the other one is!
 

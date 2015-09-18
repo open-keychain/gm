@@ -3,7 +3,13 @@
     package="org.sufficientlysecure.keychain.gm">
 
     <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+
+    <!-- TemporaryStorageProvider should be writable by this app only, thus signature-level permission -->
+    <permission
+        android:name="${applicationId}.WRITE_TEMPORARY_STORAGE"
+        android:protectionLevel="signature" />
 
     <application
         android:allowBackup="false"
@@ -32,6 +38,13 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/service_config" />
         </service>
+
+        <!-- Storage Provider for temporary decrypted files -->
+        <provider
+            android:name=".TemporaryStorageProvider"
+            android:authorities="${applicationId}.tempstorage"
+            android:exported="true"
+            android:writePermission="${applicationId}.WRITE_TEMPORARY_STORAGE" />
     </application>
 
 </manifest>
