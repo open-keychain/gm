@@ -18,10 +18,17 @@
 package org.sufficientlysecure.keychain.gm;
 
 import android.accessibilityservice.AccessibilityService;
+import android.graphics.Color;
+import android.graphics.PixelFormat;
+import android.graphics.Rect;
+import android.support.v4.view.ViewCompat;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.RelativeLayout;
 
 import java.util.ArrayList;
 
@@ -36,11 +43,17 @@ public class GmAccessibilityService extends AccessibilityService {
     private static final String END_PGP_MESSAGE = "-----END PGP MESSAGE-----";
     private static final int CHECKSUM_LENGTH = 5;
 
+    private WindowManager mWindowManager;
+    private RelativeLayout mOverlay;
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void onServiceConnected() {
+        if (mWindowManager == null) {
+            mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        }
     }
 
     @Override
@@ -50,7 +63,6 @@ public class GmAccessibilityService extends AccessibilityService {
             return;
         }
         Log.d(LOG_TAG, "TYPE_WINDOW_CONTENT_CHANGED");
-
 
         // This AccessibilityNodeInfo represents the view that fired the
         // AccessibilityEvent. The following code will use it to traverse the
@@ -66,6 +78,10 @@ public class GmAccessibilityService extends AccessibilityService {
         AccessibilityNodeInfo source = getRootInActiveWindow();
         if (source == null) {
             return;
+        }
+        if (mOverlay != null && ViewCompat.isAttachedToWindow(mOverlay)) {
+            mWindowManager.removeView(mOverlay);
+            mOverlay = null;
         }
 
         ArrayList<AccessibilityNodeInfo> pgpNodes = new ArrayList<>();
@@ -113,6 +129,12 @@ public class GmAccessibilityService extends AccessibilityService {
                     Log.d(LOG_TAG, line);
                 }
             }
+
+//            node.getBoundsInScreen();
+            Rect currRect = new Rect();
+            node.getBoundsInScreen(currRect);
+            drawOverlay(currRect);
+
         }
 
 
@@ -147,6 +169,27 @@ public class GmAccessibilityService extends AccessibilityService {
 //        }
     }
 
+    private void drawOverlay(Rect currRect) {
+
+
+        mOverlay = new RelativeLayout(this);
+        mOverlay.setBackgroundColor(Color.parseColor("#CCFFFFFF"));
+        mOverlay.setFocusable(false);
+
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                currRect.width(),
+                currRect.height(),
+                currRect.left,
+                currRect.top,
+                WindowManager.LayoutParams.TYPE_PHONE,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.TRANSLUCENT);
+
+        params.gravity = Gravity.TOP | Gravity.LEFT;
+
+        mWindowManager.addView(mOverlay, params);
+    }
+
     private void findPgpNodeInfo(AccessibilityNodeInfo parent,
                                  ArrayList<AccessibilityNodeInfo> pgpNodes) {
 
@@ -170,7 +213,7 @@ public class GmAccessibilityService extends AccessibilityService {
                 // recursive traversal
                 findPgpNodeInfo(currentChild, pgpNodes);
 
-                currentChild.recycle();
+//                currentChild.recycle();
             }
         }
     }
