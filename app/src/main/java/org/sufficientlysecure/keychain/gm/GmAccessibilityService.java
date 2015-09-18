@@ -20,7 +20,6 @@ package org.sufficientlysecure.keychain.gm;
 import android.accessibilityservice.AccessibilityService;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.net.Uri;
@@ -38,7 +37,6 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
-import android.widget.RelativeLayout;
 
 import org.sufficientlysecure.keychain.intents.OpenKeychainIntents;
 
@@ -57,7 +55,6 @@ public class GmAccessibilityService extends AccessibilityService {
 
     private WindowManager mWindowManager;
     private FrameLayout mOverlay;
-//    private Button mOverlayButton;
 
     /**
      * {@inheritDoc}
@@ -92,14 +89,7 @@ public class GmAccessibilityService extends AccessibilityService {
         if (source == null) {
             return;
         }
-        if (mOverlay != null && ViewCompat.isAttachedToWindow(mOverlay)) {
-            mWindowManager.removeView(mOverlay);
-            mOverlay = null;
-        }
-//        if (mOverlayButton != null && ViewCompat.isAttachedToWindow(mOverlayButton)) {
-//            mWindowManager.removeView(mOverlayButton);
-//            mOverlayButton = null;
-//        }
+        closeOverlay();
 
         ArrayList<AccessibilityNodeInfo> pgpNodes = new ArrayList<>();
         findPgpNodeInfo(source, pgpNodes);
@@ -118,13 +108,14 @@ public class GmAccessibilityService extends AccessibilityService {
     }
 
     private void decryptWithOpenKeychain(AccessibilityNodeInfo node) {
+        closeOverlay();
+        
         try {
             Uri dateUri = readToTempFile(fixContentDescription(node));
 
             Intent i = new Intent(OpenKeychainIntents.DECRYPT_DATA);
-            // TODO: DECRYPT_DATA broken?!
             i.setData(dateUri);
-            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(i);
         } catch (IOException e) {
             Log.e(Constants.TAG, "read to temp failed!", e);
@@ -189,37 +180,6 @@ public class GmAccessibilityService extends AccessibilityService {
         return content;
     }
 
-//        AccessibilityNodeInfo root = getRootInActiveWindow();
-//        ArrayDeque<AccessibilityNodeInfo> nodeQueue
-//                = new ArrayDeque<AccessibilityNodeInfo>();
-//        nodeQueue.add(root);
-//
-//        AccessibilityNodeInfo target = null;
-//
-//        for (AccessibilityNodeInfo node = nodeQueue.pollFirst(); node != null; node = nodeQueue.pollFirst()) {
-//            Rect currRect = new Rect();
-//
-//            node.getBoundsInScreen(currRect);
-////            if(!currRect.contains(eventX, eventY)) {
-////                node.recycle();
-////                continue;
-////            }
-//
-//            if (target == null) {
-//                target = node;
-//                continue;
-//            }
-//
-//            Rect targetRect = new Rect();
-//            target.getBoundsInScreen(targetRect);
-//            if (currRect.width() * currRect.height() <
-//                    targetRect.width() * targetRect.height()) {
-//                target.recycle();
-//                target = node;
-//            }
-//        }
-
-
     private void drawOverlay(Rect currRect, View.OnClickListener onClickListener) {
 
         mOverlay = new FrameLayout(this);
@@ -247,42 +207,6 @@ public class GmAccessibilityService extends AccessibilityService {
                 }
             }
         });
-
-//        mAnimatedChild.setBackgroundColor(Color.parseColor("#CCFFFFFF"));
-
-//        mOverlayButton = new Button(this);
-//        mOverlayButton.setText(R.string.decrypt_with_openkeychain);
-//        mOverlayButton.setOnClickListener(onClickListener);
-
-        // NOTE: MUST be two separate overlays, one that is not touchable and the other one is!
-
-        // FLAG_DIM_BEHIND ?
-//        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-//                currRect.width(),
-//                currRect.height(),
-//                currRect.left,
-//                currRect.top,
-//                WindowManager.LayoutParams.TYPE_PHONE,
-//                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-//                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-//                        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-//                PixelFormat.TRANSLUCENT);
-//        params.gravity = Gravity.TOP | Gravity.LEFT;
-//        params.windowAnimations = R.style.OverlayAnimation;
-//        mWindowManager.addView(mOverlay, params);
-//        mOverlay.addView(mAnimatedChild);
-
-//        WindowManager.LayoutParams params2 = new WindowManager.LayoutParams(
-//                WindowManager.LayoutParams.WRAP_CONTENT,
-//                WindowManager.LayoutParams.WRAP_CONTENT,
-//                currRect.left + (currRect.width() / 2),
-//                currRect.top + (currRect.height() / 2),
-//                WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
-//                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-//                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-//                PixelFormat.TRANSLUCENT);
-//        params2.gravity = Gravity.TOP | Gravity.LEFT;
-//        mWindowManager.addView(mOverlayButton, params2);
 
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -322,7 +246,7 @@ public class GmAccessibilityService extends AccessibilityService {
                 // recursive traversal
                 findPgpNodeInfo(currentChild, pgpNodes);
 
-//                currentChild.recycle();
+                currentChild.recycle();
             }
         }
     }
@@ -341,13 +265,13 @@ public class GmAccessibilityService extends AccessibilityService {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        closeOverlay();
+    }
+
+    private void closeOverlay() {
         if (mOverlay != null && ViewCompat.isAttachedToWindow(mOverlay)) {
             mWindowManager.removeView(mOverlay);
             mOverlay = null;
         }
-//        if (mOverlayButton != null && ViewCompat.isAttachedToWindow(mOverlayButton)) {
-//            mWindowManager.removeView(mOverlayButton);
-//            mOverlayButton = null;
-//        }
     }
 }

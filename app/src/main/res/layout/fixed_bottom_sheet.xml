@@ -32,7 +32,7 @@
             android:gravity="start|center_vertical"
             tools:text="Do something"
             android:textSize="16sp"
-            android:textColor="@android:color/black"
+            android:textColor="#757575"
             android:layout_toLeftOf="@+id/fixed_bottom_sheet_close"
             android:layout_toStartOf="@+id/fixed_bottom_sheet_close"
             android:textStyle="normal" />
