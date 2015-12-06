@@ -18,16 +18,20 @@
 package org.sufficientlysecure.keychain.gm;
 
 import android.accessibilityservice.AccessibilityService;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.PixelFormat;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.support.annotation.Nullable;
 import android.support.v4.view.ViewCompat;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
+import android.view.Display;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -96,9 +100,7 @@ public class GmAccessibilityService extends AccessibilityService {
         for (final AccessibilityNodeInfo node : pgpNodes) {
             Log.d(Constants.TAG, "node=" + node);
 
-            Rect currRect = new Rect();
-            node.getBoundsInScreen(currRect);
-            drawOverlay(currRect, new View.OnClickListener() {
+            drawOverlay(node, new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     decryptWithOpenKeychain(node);
@@ -114,6 +116,7 @@ public class GmAccessibilityService extends AccessibilityService {
             Uri dateUri = readToTempFile(fixContentDescription(node));
 
             Intent i = new Intent(OpenKeychainIntents.DECRYPT_DATA);
+            i.setPackage(Constants.OPEN_KEYCHAIN_PACKAGE_NAME);
             i.setData(dateUri);
             i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(i);
@@ -180,7 +183,8 @@ public class GmAccessibilityService extends AccessibilityService {
         return content;
     }
 
-    private void drawOverlay(Rect currRect, View.OnClickListener onClickListener) {
+    @SuppressLint("RtlHardcoded")
+    private void drawOverlay(AccessibilityNodeInfo node, View.OnClickListener onClickListener) {
 
         mOverlay = new FrameLayout(this);
 
@@ -205,20 +209,53 @@ public class GmAccessibilityService extends AccessibilityService {
             }
         });
 
+        Rect webviewRect = new Rect();
+        node.getBoundsInScreen(webviewRect);
+
+        Display display = mWindowManager.getDefaultDisplay();
+        Rect displayRect = new Rect();
+        display.getRectSize(displayRect);
+
+        int xpos = webviewRect.left;
+        int ypos = webviewRect.top - getStatusBarHeight() < getToolbarHeight() ?
+                getToolbarHeight()
+                : webviewRect.top - getStatusBarHeight();
+
+        int width = webviewRect.width();
+        int height = webviewRect.bottom < displayRect.height() ?
+                webviewRect.bottom - getToolbarHeight() - getStatusBarHeight()
+                : displayRect.height() - ypos - getStatusBarHeight();
+
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                0,
-                0,
+                width,
+                height,
+                xpos,
+                ypos,
                 WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                         | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
                 PixelFormat.TRANSLUCENT);
-        params.gravity = Gravity.BOTTOM | Gravity.LEFT;
+        params.gravity = Gravity.TOP | Gravity.LEFT;
         params.windowAnimations = R.style.OverlayAnimation;
         mWindowManager.addView(mOverlay, params);
         mOverlay.addView(mAnimatedChild);
     }
+
+    public int getToolbarHeight() {
+        TypedValue tv = new TypedValue();
+        getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true);
+        return getResources().getDimensionPixelSize(tv.resourceId);
+    }
+
+    public int getStatusBarHeight() {
+        int result = 0;
+        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            result = getResources().getDimensionPixelSize(resourceId);
+        }
+        return result;
+    }
+
 
     private void findPgpNodeInfo(AccessibilityNodeInfo parent,
                                  ArrayList<AccessibilityNodeInfo> pgpNodes) {
